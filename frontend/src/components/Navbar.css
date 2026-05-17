@@ -1,0 +1,73 @@
+.navbar{
+
+  width:100%;
+
+  padding:25px 8%;
+
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:center;
+
+  position:sticky;
+
+  top:0;
+
+  z-index:999;
+
+  background:rgba(0,0,0,0.7);
+
+  backdrop-filter:blur(10px);
+
+  border-bottom:1px solid #1f1f1f;
+}
+
+.logo{
+
+  font-size:28px;
+
+  font-weight:700;
+
+  color:#d4af37;
+
+  letter-spacing:2px;
+}
+
+.nav-right{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:15px;
+}
+
+.user-box,
+.guest-box{
+
+  background:#151515;
+
+  padding:12px 20px;
+
+  border-radius:30px;
+
+  border:1px solid #2a2a2a;
+}
+
+.logout-btn{
+
+  padding:12px 20px;
+
+  border:none;
+
+  border-radius:30px;
+
+  background:#d4af37;
+
+  color:black;
+
+  font-weight:600;
+
+  cursor:pointer;
+}

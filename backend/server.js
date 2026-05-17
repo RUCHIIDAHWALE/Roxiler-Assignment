@@ -1,119 +1,301 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 require("dotenv").config();
 
-const express = require("express");
-const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const db = require("./db");
+const User = require("./models/User");
+const Store = require("./models/Store");
+const Rating = require("./models/Rating");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+mongoose.connect(process.env.MONGO_URI)
+.then(()=>{
 
+  console.log("Database Connected Successfully");
 
-// HOME ROUTE
-app.get("/", (req, res) => {
-    res.send("Backend Running Successfully");
+})
+.catch((error)=>{
+
+  console.log(error);
+
 });
 
 
+// =========================
+// REGISTER
+// =========================
 
-// REGISTER API
-app.post("/register", async (req, res) => {
+app.post("/api/auth/register", async(req,res)=>{
 
-    const { name, email, password, address } = req.body;
+  try{
 
-    try {
+    const {
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+      name,
+      email,
+      address,
+      password
 
-        const sql = `
-            INSERT INTO users(name, email, password, address)
-            VALUES (?, ?, ?, ?)
-        `;
+    } = req.body;
 
-        db.query(
-            sql,
-            [name, email, hashedPassword, address],
-            (err, result) => {
+    const existingUser =
+      await User.findOne({ email });
 
-                if(err){
-                    return res.status(500).json(err);
-                }
+    if(existingUser){
 
-                res.json({
-                    message: "User Registered Successfully"
-                });
-            }
-        );
+      return res.status(400).json({
+        message:"User Already Exists"
+      });
 
-    } catch(error){
-        res.status(500).json(error);
     }
 
-});
+    const hashedPassword =
+      await bcrypt.hash(password,10);
 
+    const newUser = new User({
 
-
-// LOGIN API
-app.post("/login", (req, res) => {
-
-    const { email, password } = req.body;
-
-    const sql = "SELECT * FROM users WHERE email = ?";
-
-    db.query(sql, [email], async (err, result) => {
-
-        if(err){
-            return res.status(500).json(err);
-        }
-
-        if(result.length === 0){
-            return res.status(404).json({
-                message: "User Not Found"
-            });
-        }
-
-        const user = result[0];
-
-        const isMatch = await bcrypt.compare(password, user.password);
-
-        if(!isMatch){
-            return res.status(400).json({
-                message: "Invalid Password"
-            });
-        }
-
-        const token = jwt.sign(
-            {
-                id: user.id,
-                role: user.role
-            },
-            "SECRETKEY",
-            {
-                expiresIn: "1d"
-            }
-        );
-
-        res.json({
-            message: "Login Successful",
-            token,
-            user
-        });
+      name,
+      email,
+      address,
+      password:hashedPassword
 
     });
 
+    await newUser.save();
+
+    res.json({
+
+      message:"User Registered Successfully"
+
+    });
+
+  }
+  catch(error){
+
+    console.log(error);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+
 });
 
 
-app.get("/test", (req, res) => {
-    res.send("LOGIN ROUTE ACTIVE");
+// =========================
+// LOGIN
+// =========================
+
+app.post("/api/auth/login", async(req,res)=>{
+
+  try{
+
+    const {
+
+      email,
+      password
+
+    } = req.body;
+
+    const user =
+      await User.findOne({ email });
+
+    if(!user){
+
+      return res.status(400).json({
+        message:"Invalid Credentials"
+      });
+
+    }
+
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
+
+    if(!isMatch){
+
+      return res.status(400).json({
+        message:"Invalid Credentials"
+      });
+
+    }
+
+    const token =
+      jwt.sign(
+
+        {
+          id:user._id
+        },
+
+        process.env.JWT_SECRET,
+
+        {
+          expiresIn:"7d"
+        }
+
+      );
+
+    res.json({
+
+      token,
+
+      user:{
+
+        id:user._id,
+        name:user.name,
+        email:user.email
+
+      }
+
+    });
+
+  }
+  catch(error){
+
+    console.log(error);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+
 });
 
-// SERVER
-app.listen(5000, () => {
-    console.log("Server Running on Port 5000");
+
+// =========================
+// ADD STORE
+// =========================
+
+app.post("/api/stores/add", async(req,res)=>{
+
+  try{
+
+    const {
+
+      name,
+      email,
+      address,
+      image
+
+    } = req.body;
+
+    const newStore = new Store({
+
+      name,
+      email,
+      address,
+      image
+
+    });
+
+    await newStore.save();
+
+    res.json({
+
+      message:"Store Added Successfully"
+
+    });
+
+  }
+  catch(error){
+
+    console.log(error);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+
+});
+
+
+// =========================
+// GET STORES
+// =========================
+
+app.get("/api/stores", async(req,res)=>{
+
+  try{
+
+    const stores =
+      await Store.find();
+
+    res.json(stores);
+
+  }
+  catch(error){
+
+    console.log(error);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+
+});
+
+
+// =========================
+// ADD RATING
+// =========================
+
+app.post("/api/ratings/add", async(req,res)=>{
+
+  try{
+
+    const {
+
+      userId,
+      storeId,
+      value
+
+    } = req.body;
+
+    const newRating = new Rating({
+
+      userId,
+      storeId,
+      value
+
+    });
+
+    await newRating.save();
+
+    res.json({
+
+      message:"Rating Added Successfully"
+
+    });
+
+  }
+  catch(error){
+
+    console.log(error);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+
+});
+
+
+app.listen(5000,()=>{
+
+  console.log("Server Running on Port 5000");
+
 });
